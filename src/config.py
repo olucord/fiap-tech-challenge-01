@@ -47,8 +47,18 @@ class CustomJSONProvider(DefaultJSONProvider):
     Sobreposição de métodos padrão json no Flask.
     ---
     Métodos:
-        dumps: método para conveter dicionários Python em json.
-        loads: métodos para converter json em dicionários Python.
+        dumps: convete dicionários Python para json.
+        Atributos:
+            self: instância da classe CustomJSONProvider.
+            obj: objeto Python que será convertido para json.
+            **kwargs: captura todos os argumentos nomeados passados para o 
+            método.
+        loads: converte json para dicionários Python.
+        Atributos:
+            self: instância da classe CustomJSONProvider.
+            s: json string que será convertida para dicionário Python.
+            **kwargs: captura todos os argumentos nomeados passados para o 
+            método.
     """
     def dumps(self, obj, **kwargs):
         kwargs.setdefault('ensure_ascii', False)

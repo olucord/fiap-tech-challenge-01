@@ -230,7 +230,9 @@ def get_help():
 
     return jsonify({
         "help": "Esse endpoint apresenta as opções e parâmetros válidos na API.",
-        "":"",
+        "/":"",
+        "example":"http://127.0.0.1:5000/scrape/content?option=producao&year=2000",
+        "//":"",
         "valids options": list(embrapa_scraping_map.keys()),
         "details": embrapa_scraping_map
     })

@@ -18,7 +18,11 @@ app.register_blueprint(scraping_bp)
 
 @app.route('/')
 def home():
-    return "Welcome to Embrapa's API"
+    return (
+        "Welcome to Embrapa's API! To get started, "
+        "visit http://127.0.0.1:5000/scrape/content/help "
+        "for instructions on how to use the API."
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
