@@ -6,17 +6,6 @@ from pydantic import ValidationError
 
 scraping_bp = Blueprint('Scraping', __name__)
 
-"""
-Produção
-
-url = http://vitibrasil.cnpuv.embrapa.br/index.php?ano=2023&opcao=opt_02
-
-Params a serem passados pelos usuários: 
-process = producao
-date = ano ou intervalo de anos
-products = vinho_de_mesa, vinho_fino_de_mesa_(vinifera), suco, derivados 
-
-"""
 def get_table_headers(data_table):
 
     # elemento de nível 2 - cabeçalho da tabela de produtos
