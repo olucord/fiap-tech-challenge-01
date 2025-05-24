@@ -1,27 +1,31 @@
-from flask.json.provider import DefaultJSONProvider
 """
 config.py
 
-Configura a aplicação Flask para diferentes ambientes de operação (desenvolvi-
-mento e produção) e configurações de autenticação, documentação e modelos
+Este módulo define as configurações principais da aplicação Flask para diferen-
+tes ambientes (desenvolvimento e produção), além de fornecer a ela um provedor 
+JSON personalizado.
 
 Classes:
-- ConfigDev: configurações para o ambiente de desenvolvimento.
-- ConfigProd: configurações para o ambiente de produção.
-- CustomJSONProvider: sobreposição de métodos padrão json no Flask.
+    - ConfigDev: Configurações específicas para ambiente de desenvolvimento.
+    - ConfigProd: Config urações específicas para ambiente de produção.
+    - CustomJSONProvider: Provedor personalizado de serialização e desseriali-
+    zação JSON no Flask com ajustes para compatibilidade com Unicode e controle 
+    de ordenação de chaves.
 """
+
+from flask.json.provider import DefaultJSONProvider
+from typing import Any
+
 class ConfigDev:
     """
-    Configurações para o ambiente de desenvolvimento.
-    ---
+    Configurações de desenvolvimento para a aplicação Flask.
+
     Atributos:
-        DEBUG (bool): ativa o modo de debug do Flask.
-        JWT_SECRET_KEY (str): defini a chave de segurança para assinar o JWT.
-        JSONIFY_PRETTYPRINT_REGULAR (bool): formatação da saída do json para fa-
-        cilitar a leitura.
-        SWAGGER (dict): configurações de documentação do Swagger.
-        CACHE_TYPE: ativa o cache em memória local para projetos simples e 
-        testes.
+        DEBUG (bool): Ativa o modo de depuração.
+        JWT_SECRET_KEY (str): Chave secreta usada para assinatura de tokens JWT.
+        JSONIFY_PRETTYPRINT_REGULAR (bool): Ativa a identação na saída JSON.
+        SWAGGER (dict): Configurações para a interface Swagger UI.
+        CACHE_TYPE (str): Tipo de cache utilizado ('simple' usa cache em memória).
     """
     DEBUG = True
     JWT_SECRET_KEY = 'Nem_toda_senha_sera_segura'
@@ -34,37 +38,50 @@ class ConfigDev:
 
 class ConfigProd:
     """
-    Configurações para o ambiente de produção.
-    ---
+    Configurações de produção para a aplicação Flask.
+
     Atributos:
-        DEBUG (bool): desativa o modo de debug do Flask, por questões de segu-
-        rança.
+        DEBUG (bool): Desativa o modo de depuração em produção.
     """
     DEBUG = False
 
 class CustomJSONProvider(DefaultJSONProvider):
     """
-    Sobreposição de métodos padrão json no Flask.
-    ---
+    Provedor personalizado de JSON para a aplicação Flask.
+
+    Sobrescreve os métodos padrão de serialização e desserialização JSON no 
+    Flask para permitir melhor compatibilidade com caracteres especiais e ordem 
+    de chaves.
+
     Métodos:
-        dumps: convete dicionários Python para json.
-        Atributos:
-            self: instância da classe CustomJSONProvider.
-            obj: objeto Python que será convertido para json.
-            **kwargs: captura todos os argumentos nomeados passados para o 
-            método.
-        loads: converte json para dicionários Python.
-        Atributos:
-            self: instância da classe CustomJSONProvider.
-            s: json string que será convertida para dicionário Python.
-            **kwargs: captura todos os argumentos nomeados passados para o 
-            método.
+        dumps: serializa um objeto Python em uma string JSON.
+        loads: desserializa uma string JSON em um objeto Python.
     """
-    def dumps(self, obj, **kwargs):
+  
+    def dumps(self, obj, **kwargs) -> str:
+        """
+        Serializa um objeto Python em uma string JSON.
+
+        Argumentos:
+            obj: Objeto Python a ser serializado.
+            **kwargs: Parâmetros adicionais para customizar a serialização.
+
+        Returns:
+            str: Representação JSON do objeto.
+        """
         kwargs.setdefault('ensure_ascii', False)
         kwargs.setdefault('sort_keys', False)
         return super().dumps(obj, **kwargs)
 
-    def loads(self, s, **kwargs):
-        return super().loads(s, **kwargs)
+    def loads(self, s, **kwargs) -> Any:
+        """
+        Desserializa uma string JSON em um objeto Python.
 
+        Argumentos:
+            s (str): String JSON a ser convertida.
+            **kwargs: Parâmetros adicionais para customizar a desserialização.
+
+        Returns:
+            Any: Objeto Python resultante da conversão.
+        """
+        return super().loads(s, **kwargs)

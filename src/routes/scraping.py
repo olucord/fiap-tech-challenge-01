@@ -6,6 +6,18 @@ from pydantic import ValidationError
 
 scraping_bp = Blueprint('Scraping', __name__)
 
+def build_full_url(parameters_sent):
+
+    PARTIAL_URL = 'http://vitibrasil.cnpuv.embrapa.br/index.php?'
+    
+    full_url = PARTIAL_URL+parameters_sent['option']+'&'+parameters_sent['year']
+
+    if parameters_sent['sub_option']:
+        full_url += '&'+parameters_sent['sub_option']
+   
+    return full_url
+
+
 def get_table_headers(data_table):
 
     # elemento de nível 2 - cabeçalho da tabela de produtos
@@ -30,121 +42,98 @@ def get_table_footers(data_table):
     cells = footer_row.find_all('td')
     return [cell.get_text(strip=True) for cell in cells]
 
-def get_data_table(parameters_sent):
+def get_data_table(parameters_sent, table):
 
-    PARTIAL_URL = 'http://vitibrasil.cnpuv.embrapa.br/index.php?'
+    dict_items = {}
+    # Flag para navegar entre itens e sub-itens
+    current_category = None
+    items_list = []
     
-    full_url = PARTIAL_URL+parameters_sent['option']+'&'+parameters_sent['year']
+    # elemento de nível 2 - corpo da tabela de produtos
+    table_body = table.find('tbody')
+    
+    if parameters_sent['original_option'] in \
+    ['producao', 'processamento', 'comercializacao']:
+        
+    # elemento de nível 3 - linhas do corpo da tabela
+        for row in table_body.find_all('tr'):
 
-    if parameters_sent['sub_option']:
-        full_url += '&'+parameters_sent['sub_option']
+            # elemento de nível 4 - células das linhas 
+
+            # items
+            cells = row.find_all('td', class_='tb_item')
+
+            if cells:
+                temporary_list = [cell.get_text(strip=True) for cell in cells]
+
+                # evita quebrar o programa, caso não haja elementos
+                if len(temporary_list) >= 2:
+                    product = temporary_list[0]
+                    quantity = temporary_list[1]
+                    current_category = f'{product} : {quantity}'
+                    dict_items[current_category] = {}
+
+            # sub-items
+            cells = row.find_all('td', class_='tb_subitem')
+            
+            if cells:
+                temporary_list = [cell.get_text(strip=True) for cell in cells]
+
+                if len(temporary_list) >= 2:
+                    sub_product = temporary_list[0]                    
+                    quantity = temporary_list[1]
+                    dict_items[current_category][sub_product] = quantity
+
+        return list(dict_items.items())
     
-    # return jsonify({'A url completa é':full_url}) 
+    if parameters_sent['original_option'] in \
+    ['importacao', 'exportacao']:
+
+        # elemento de nível 3 - linhas do corpo da tabela
+        for row in table_body.find_all('tr'):
+
+            # elemento de nível 4 - células das linhas 
+            cells = row.find_all('td')
+
+            if cells:
+                temporary_list = [cell.get_text(strip=True) for cell in cells]
+
+                # evita quebrar o programa, caso não haja elementos
+                if len(temporary_list) >= 3:
+                    countries = temporary_list[0]
+                    quantity = temporary_list[1]
+                    price = temporary_list[2]
+                    items_list.append([countries, quantity, price])
+        
+        return items_list
+    
+def scrape_table_content(parameters_sent):
+
+    full_url = build_full_url(parameters_sent) 
 
     try:
 
         response = requests.get(full_url)
         soup = BeautifulSoup(response.text, 'html.parser')
-        dict_items = {}
-        # Flag para navegar entre itens e sub-itens
-        current_category = None
-        items_list = []
 
         # elemento de nível 1 - tabela de produtos
-        data_table = soup.find('table', class_='tb_base tb_dados')
+        table = soup.find('table', class_='tb_base tb_dados')
 
-        data_table_headers = get_table_headers(data_table)
-        data_table_footers = get_table_footers(data_table)
-        
-        # elemento de nível 2 - corpo da tabela de produtos
-        table_body = data_table.find('tbody')
-        
-        if parameters_sent['original_option'] in \
-        ['producao', 'processamento', 'comercializacao']:
-            
-        # elemento de nível 3 - linhas do corpo da tabela
-            for row in table_body.find_all('tr'):
+        table_headers = get_table_headers(table)
+        table_footers = get_table_footers(table)
+        data_table = get_data_table(parameters_sent, table)
 
-                # elemento de nível 4 - células das linhas 
-
-                # items
-                cells = row.find_all('td', class_='tb_item')
-
-                if cells:
-                    temporary_list = []
-
-                    for cell in cells:
-                        
-                        cell_text = cell.get_text(strip=True)
-                        
-                        temporary_list.append(cell_text)
-                    
-                    # evita quebrar o programa, caso não haja elementos
-                    if len(temporary_list) >= 2:
-                        product = temporary_list[0]
-                        quantity = temporary_list[1]
-                        current_category = f'{product} : {quantity}'
-                        dict_items[current_category] = {}
-
-                # sub-items
-                cells = row.find_all('td', class_='tb_subitem')
-                
-                if cells:
-                    temporary_list = []
-
-                    for cell in cells:
-
-                        cell_text = cell.get_text(strip=True)
-
-                        temporary_list.append(cell_text)
-
-                    if len(temporary_list) >= 2:
-                        sub_product = temporary_list[0]                    
-                        quantity = temporary_list[1]
-                        dict_items[current_category][sub_product] = quantity
-
-
-            return jsonify({
+        return jsonify({
                 f"[Parâmetros da pesquisa]":
                 f'[opção={parameters_sent['original_option']}, '
                 f'ano={parameters_sent['original_year']}, '
                 f'sub_opção={parameters_sent['original_sub_option']}'
                 ' (None, se não existir)]',
                 "":"",
-                f"{data_table_headers} {data_table_footers}":
-                list(dict_items.items())
+                f"{table_headers} {table_footers}":
+                data_table
                 })
-        
-        if parameters_sent['original_option'] in \
-        ['importacao', 'exportacao']:
 
-            # elemento de nível 3 - linhas do corpo da tabela
-            for row in table_body.find_all('tr'):
-
-                # elemento de nível 4 - células das linhas 
-                cells = row.find_all('td')
-
-                if cells:
-                    temporary_list = [cell.get_text(strip=True) for cell in cells]
-
-                    # evita quebrar o programa, caso não haja elementos
-                    if len(temporary_list) >= 3:
-                        countries = temporary_list[0]
-                        quantity = temporary_list[1]
-                        price = temporary_list[2]
-                        items_list.append([countries, quantity, price])
-            
-            return jsonify({
-                f"[Parâmetros da pesquisa]":
-                f'[opção={parameters_sent['original_option']}, '
-                f'ano={parameters_sent['original_year']}, '
-                f'sub_opção={parameters_sent['original_sub_option']}'
-                ' (None, se não existir)]',
-                "":"",
-                f'{tuple(data_table_headers)} {tuple(data_table_footers)}':
-                items_list
-                })
-    
     except Exception as e:
         return jsonify({"error":str(e)})
 
@@ -155,7 +144,7 @@ def scrap_content():
         data = request.args.to_dict()
         parameters_sent = QueryParametersModel(**data).model_dump()
         
-        return get_data_table(parameters_sent)
+        return scrape_table_content(parameters_sent)
     
     except ValidationError as e:
         return jsonify({
@@ -169,7 +158,9 @@ def scrap_content():
         return jsonify({"error":str(e)}), 422
 
 @scraping_bp.route('/scrape/content/help', methods=['GET'])
+
 def get_help():
+    
     embrapa_scraping_map = {
         "producao": {
             "parameters": {

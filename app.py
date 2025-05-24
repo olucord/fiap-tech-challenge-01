@@ -1,3 +1,16 @@
+"""
+app.py
+
+Módulo principal da API. Inicializa a aplicação Flask importando as 
+configurações, modelos, rotas de requisição e ferramentas auxiliares 
+da API. 
+
+Também é responsável por executar a aplicação no servidor.
+
+Rotas:
+- / : rota principal da API flask.
+"""
+
 from flask import Flask
 from src.config import ConfigDev, CustomJSONProvider
 # from src.models import db
@@ -15,9 +28,15 @@ app.register_blueprint(scraping_bp)
 # app.register_blueprint(auth_bp)
 # configure_swagger(app)
 
-
 @app.route('/')
-def home():
+def home() -> str:
+    """
+    Rota principal da aplicação, faz uma saudação, apresenta a API e exibe um 
+    link de ajuda para usar a aplicação.
+
+    Returns:
+        str: informações sobre a API.
+    """
     return (
         "Welcome to Embrapa's API! To get started, "
         "visit http://127.0.0.1:5000/scrape/content/help "
