@@ -340,24 +340,10 @@ def scrap_content() -> Response:
     responses:
       200:
         description: Dados raspados e organizados conforme os parâmetros fornecidos.
-        content:
-          application/json:
-            Objeto JSON contendo os dados raspados, organizado em função dos parâmetros fornecidos.  
       422:
         description: Erro de validação dos parâmetros.
-        content:
-          application/json:
-            example:
-              error: Validation failed
-              details: "mensagem de erro detalhada"
-              support: /scrape/content/help
-              example: {"option": "producao", "year": 2023}
       500:
-        description: Erro interno no servidor ao tentar realizar a raspagem.
-        content:
-          application/json:
-            example:
-              error: Ocorreu um erro inesperado ao processar a solicitação.
+        description:  Erro interno no servidor ao tentar realizar a raspagem.
     """    
     try:
         data = request.args.to_dict()
@@ -384,32 +370,9 @@ def scrap_content_help() -> Response:
     ---
     responses:
       200:
-        description: |
-          Retorna um dicionário contendo:
-            - As opções válidas de parâmetros que podem ser utilizados na rota /scrape/content
-            - Um exemplo de requisição HTTP para facilitar o uso da API
-        content:
-          application/json:
-            example:
-              help: Esse endpoint apresenta os parâmetros válidos na API.
-              example: http://127.0.0.1:5000/scrape/content?option=producao&year=2000
-              valids options: ["producao", "processamento", "comercializacao", "importacao", "exportacao"]
-              details:
-                producao:
-                  parameters:
-                    year: between 1970 and 2023
-                processamento:
-                  parameters:
-                    year: between 1970 and 2023
-                    sub_option: ["viniferas", "americanas_e_hibridas", "uvas_de_mesa", "sem_classificacao"]
-                ...
-
+        description: Dicionário com parâmetros válidos para a requisição HTTP e exemplo de uso da API
       500:
         description: Erro interno no servidor ao tentar gerar os dados de auxílio.
-        content:
-          application/json:
-            example:
-              error: Ocorreu um erro inesperado ao processar a solicitação.
     """       
     embrapa_scraping_map = {
         "producao": {

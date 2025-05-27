@@ -16,7 +16,7 @@ from src.config import ConfigDev, CustomJSONProvider
 from src.routes import scraping_bp
 # from src.auth import configure_jwt
 # from src.routes import auth_bp
-# from src.docs import configure_swagger
+from src.docs import configure_swagger
 
 app = Flask(__name__)
 app.config.from_object(ConfigDev)
@@ -25,7 +25,7 @@ app.config.from_object(ConfigDev)
 app.json = CustomJSONProvider(app)
 app.register_blueprint(scraping_bp)
 # app.register_blueprint(auth_bp)
-# configure_swagger(app)
+configure_swagger(app)
 
 @app.route('/')
 def home() -> str:
