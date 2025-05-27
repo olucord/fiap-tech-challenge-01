@@ -1,4 +1,78 @@
-from flask import Blueprint, jsonify, request
+"""
+scraping.py
+
+Módulo responsável pela raspagem de dados do site da Embrapa
+
+Este módulo fornece endpoints e funções referentes a raspagem de dados do site 
+da Embrapa (http://vitibrasil.cnpuv.embrapa.br/index.php?opcao=opt_01), 
+contemplando dados da vitivinicultura do estado do Rio Grande do Sul.
+
+Os dados extraídos são estruturados e retornados em formato JSON.
+
+Endpoints:
+    GET /scrape/content: endpoint para raspagem de dados do site da Embrapa com 
+    filtros baseados nos parâmetros passados na requisição HTTP (option, year e 
+    sub_option).
+
+    GET /scrape/content/help: endpoint auxiliar que exibe opções de parâmetros 
+    válidos a serem passados na requisição HTTP e exemplos de uso da API.
+
+Functions:
+    build_full_url(parameters_sent): função para construir a url completa a ser
+    aplicada na requisição HTTP. Ela é definida com base nos parâmetros passados.
+
+        Params:
+            parameters_sent (dict): dicionário contendo os parâmetros da 
+            requisição HTTP.
+
+        Returns:
+            str: url completa formatada para a requisição HTTP.
+
+    get_table_headers(table): função para extrair os cabeçalhos da tabela 
+    principal na página raspada.
+
+        Params:
+            table (Tag): elemento html da tabela principal na página raspada. 
+
+        Returns:
+            list: lista com os cabeçalhos extraidos da tabela principal na 
+            página raspada.
+
+    get_table_footers(table): função para extrair os rodapés da tabela 
+    principal na página raspada.
+
+        Params:
+            table (Tag): elemento html da tabela principal na página raspada. 
+
+        Returns:
+            list: lista com os rodapés extraidos da tabela principal na 
+            página raspada.
+
+    get_data_table(parameters_sent, table): função para extrair os dados da 
+    tabela principal na página raspada. 
+
+        Params:
+            parameters_sent (dict): dicionário contendo os parâmetros da 
+            requisição HTTP.
+            table (Tag): elemento html da tabela principal na página raspada. 
+
+        Returns:
+            list: lista com os dados extraidos da tabela principal na 
+            página raspada.
+
+    scrape_table_content(parameters_sent): função que realiza a raspagem no site. 
+    Integra todas as outras funções aqui definidas.
+
+        Params:
+            parameters_sent (dict): dicionário contendo os parâmetros da 
+            requisição HTTP.
+
+        Returns:
+            response: objeto JSON com os dados organizados conforme os 
+            parâmetros passados na requisição HTTP.
+
+"""
+from flask import Blueprint, jsonify, request, Response
 import requests
 from bs4 import BeautifulSoup
 from src.models import QueryParametersModel
@@ -6,8 +80,20 @@ from pydantic import ValidationError
 
 scraping_bp = Blueprint('Scraping', __name__)
 
-def build_full_url(parameters_sent):
+def build_full_url(parameters_sent) -> str:
+    """
+    Constrói a URL completa para a requisição HTTP do site da Embrapa.
 
+    A URL é composta pela opção principal ("option"), ano ("year") e,
+    caso exista, uma sub-opção ("sub_option").
+
+    Args:
+        parameters_sent (dict): dicionário contendo os parâmetros já validados 
+        da requisição HTTP.
+
+    Returns:
+        str: url completa a ser utilizada na requisição HTTP.
+    """
     PARTIAL_URL = 'http://vitibrasil.cnpuv.embrapa.br/index.php?'
     
     full_url = PARTIAL_URL+parameters_sent['option']+'&'+parameters_sent['year']
@@ -18,10 +104,20 @@ def build_full_url(parameters_sent):
     return full_url
 
 
-def get_table_headers(data_table):
+def get_table_headers(table) -> list:
+    """
+    Extrai os cabeçalhos da tabela principal da página raspada.
 
+    Os cabeçalhos são encontrados no elemento <thead> da tabela.
+
+    Args:
+        table: objeto BeautifulSoup representando a tabela principal.
+
+    Returns:
+        list: lista de strings com os nomes dos cabeçalhos da tabela.
+    """
     # elemento de nível 2 - cabeçalho da tabela de produtos
-    table_header = data_table.find('thead')
+    table_header = table.find('thead')
 
     # elemento de nível 3 - linha do cabeçalho da tabela
     header_row = table_header.find('tr')
@@ -30,10 +126,20 @@ def get_table_headers(data_table):
     headers = header_row.find_all('th')
     return [header.get_text(strip=True) for header in headers]
 
-def get_table_footers(data_table):
-    
+def get_table_footers(table) -> list:
+    """
+    Extrai os rodapés da tabela principal da página raspada.
+
+    Os rodapés são encontrados no elemento <tfoot> da tabela.
+
+    Args:
+        table: objeto BeautifulSoup representando a tabela principal.
+
+    Returns:
+        list: lista de strings com os valores dos rodapés da tabela.
+    """
     # elemento de nível 2 - rodapé da tabela de produtos
-    table_footer = data_table.find('tfoot', class_='tb_total')
+    table_footer = table.find('tfoot', class_='tb_total')
 
     # elemento de nível 3 - linha do rodapé da tabela
     footer_row = table_footer.find('tr')
@@ -42,8 +148,34 @@ def get_table_footers(data_table):
     cells = footer_row.find_all('td')
     return [cell.get_text(strip=True) for cell in cells]
 
-def get_data_table(parameters_sent, table):
+def get_data_table(parameters_sent, table) -> list:
+    """
+    Extrai os dados da tabela principal da página raspada com base na opção 
+    selecionada.
 
+    A função analisa o corpo da tabela principal e estrutura os dados de acordo 
+    com o tipo de opção informada em "original_option".
+
+    Para as opções "producao", "processamento" e "comercializacao", os dados são 
+    extraídos em formato de categorias e subcategorias.
+
+    Para as opções "importacao" e "exportacao", os dados são organizados em 
+    listas com informações de países, quantidade e preço.
+
+    Args:
+        parameters_sent (dict): dicionário com os parâmetros validados da 
+        requisição HTTP.
+        table: objeto BeautifulSoup que representa a tabela principal.
+
+    Returns:
+        list: lista contendo os dados extraídos da tabela, organizados conforme 
+        o tipo de opção selecionada. O formato da lista varia de acordo com a 
+        opção:
+            lista de tuplas com categorias e subcategorias: produção, 
+            processamento, comercialização.
+            lista de listas com países, quantidades e preços: importação e 
+            exportação.
+    """
     dict_items = {}
     # Flag para navegar entre itens e sub-itens
     current_category = None
@@ -107,8 +239,28 @@ def get_data_table(parameters_sent, table):
         
         return items_list
     
-def scrape_table_content(parameters_sent):
+def scrape_table_content(parameters_sent) -> Response:
+    """
+    Realiza a raspagem de dados no site da Embrapa com base nos parâmetros 
+    fornecidos.
 
+    Esta função constrói a URL da consulta a partir dos parâmetros recebidos,
+    realiza a requisição HTTP ao site da Embrapa, e extrai os dados relevantes 
+    da tabela principal encontrada na página raspada.
+
+    Os dados retornados incluem:
+        Cabeçalhos da tabela.
+        Rodapés da tabela.
+        Dados principais (linhas da tabela).
+
+    Args:
+        parameters_sent (dict): Dicionário com os parâmetros validados da 
+        requisição HTTP.
+
+    Returns:
+        Response: Objeto JSON contendo os dados extraídos e organizados, ou uma 
+        mensagem de erro, caso ocorra uma falha durante a raspagem.
+    """
     full_url = build_full_url(parameters_sent) 
 
     try:
@@ -138,8 +290,27 @@ def scrape_table_content(parameters_sent):
         return jsonify({"error":str(e)})
 
 @scraping_bp.route('/scrape/content', methods=['GET'])
-def scrap_content():
+def scrap_content() -> Response:
+    """
+    Endpoint principal para raspagem de dados da Embrapa.
 
+    Este endpoint recebe parâmetros via query string e realiza a raspagem dos 
+    dados disponíveis no site da Embrapa. Os dados são filtrados com base nos 
+    parâmetros fornecidos e retornados em formato JSON.
+
+    Params:
+        option (str): opção principal de consulta (ex: producao, importacao, 
+        etc.).
+        year (int, opcional): ano de interesse, limitado conforme a opção 
+        escolhida.
+        sub_option (str, opcional): subcategoria específica, se aplicável à 
+        opção.
+
+    Returns:
+        Response: Objeto JSON contendo os dados raspados e organizados.
+                  Em caso de erro de validação, retorna código HTTP 422 com 
+                  detalhes.
+    """
     try:
         data = request.args.to_dict()
         parameters_sent = QueryParametersModel(**data).model_dump()
@@ -159,8 +330,18 @@ def scrap_content():
 
 @scraping_bp.route('/scrape/content/help', methods=['GET'])
 
-def get_help():
-    
+def scrap_content_help() -> Response:
+    """
+    Endpoint de ajuda para uso da API de raspagem.
+
+    Fornece um dicionário contendo as opções válidas de parâmetros que podem ser
+    utilizados na requisição à rota principal (/scrape/content), bem como exemplos
+    de uso da API.
+
+    Returns:
+        Response: Objeto JSON com as opções válidas (option, year, sub_option) 
+                  e um exemplo de requisição para facilitar o uso correto.
+    """    
     embrapa_scraping_map = {
         "producao": {
             "parameters": {
