@@ -2,8 +2,7 @@
 app.py
 
 Módulo principal da API. Inicializa a aplicação Flask importando as 
-configurações, modelos, rotas de requisição e ferramentas auxiliares 
-da API. 
+configurações e utilitários da API. 
 
 Também é responsável por executar a aplicação no servidor.
 
