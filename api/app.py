@@ -36,5 +36,6 @@ def home() -> str:
         "for instructions on how to use the API."
     )
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# if __name__ == '__main__':
+#     app.run(debug=True)
+handler = app
