@@ -43,8 +43,15 @@ class ConfigProd:
     
     Attrs:
         DEBUG (bool): Desativa o modo de depuração em produção.
+        JSONIFY_PRETTYPRINT_REGULAR (bool): Ativa a identação na saída JSON.
+        SWAGGER (dict): Configurações para a interface Swagger UI.
     """
     DEBUG = False
+    JSONIFY_PRETTYPRINT_REGULAR = True
+    SWAGGER = {
+    "title":"Embrapa's API",
+    "uiversion":3
+}
 
 class CustomJSONProvider(DefaultJSONProvider):
     """
